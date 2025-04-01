@@ -36,9 +36,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: ThemeData(
-        primaryColor: Colors.white,
-      ),
+      theme: ThemeData.dark(),
       home: Scaffold(
         appBar: AppBar(title: const Text('Qualité des Rivières')),
         body: Padding(
@@ -47,44 +45,28 @@ class _MyAppState extends State<MyApp> {
             children: [
               if (_error.isNotEmpty)
                 Text(_error, style: const TextStyle(color: Colors.red)),
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 50, 
-                      width: 50,
-                      child: Container(
-                        width: 100, 
-                        child: _stations.isNotEmpty
-                          ? ListView(
-                              children: [
-                                SizedBox(height: 10),
-                                Text("Nombre de stations",
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                SizedBox(height: 150, child: BarChartWidget(stations: _stations)),
-                              ],
-                            )
-                          : const Center(child: CircularProgressIndicator()),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+
               Expanded(
-              child: _stations.isNotEmpty
-                  ? ListView(
-                      children: [
-                        SizedBox(height: 10),
-                        Text("Evolution d'une mesure",
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        SizedBox(height: 150, width: 50, child: LineChartWidget(stations: _stations)),
-                        SizedBox(height: 10),
-                        Text("Répartition des stations",
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        SizedBox(height: 150, child: PieChartWidget(stations: _stations)),
-                      ],
-                    )
-                  : const Center(child: CircularProgressIndicator()),
+                child: _stations.isNotEmpty
+                    ? ListView(
+                        children: [
+                          SizedBox(height: 10),
+                          Text("Nombre de stations",
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          SizedBox(height: 150, child: BarChartWidget(stations: _stations)),
+
+                          SizedBox(height: 20),
+                          Text("Evolution d'une mesure",
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          SizedBox(height: 150, child: LineChartWidget(stations: _stations)),
+
+                          SizedBox(height: 20),
+                          Text("Répartition des stations",
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          SizedBox(height: 150, child: PieChartWidget(stations: _stations)),
+                        ],
+                      )
+                    : const Center(child: CircularProgressIndicator()),
               ),
             ],
           ),
