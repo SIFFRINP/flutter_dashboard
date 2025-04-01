@@ -1,32 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
-// import 'package:fl_chart/fl_chart.dart';
+import 'package:fl_chart/fl_chart.dart';
 
-class HubEauFlow {
-  final String rootPath = 'https://hubeau.eaufrance.fr/api/v2/qualite_rivieres';
-  final Dio dio = Dio();
+import 'api/api_station.dart';
 
-  Future<List<dynamic>> getStations({
-    String format = 'json',
-    String? codeStation,
-    String? libelleStation,
-  }) async {
-    try {
-      final response = await dio.get(
-        '$rootPath/stations',
-        queryParameters: {
-          'format': format,
-          if (codeStation != null) 'code_station': codeStation,
-          if (libelleStation != null) 'libelle_station': libelleStation,
-        },
-      );
-      return response.data['data'];
-    } catch (e) {
-      print('Erreur : $e');
-      return [];
-    }
-  }
-}
 
 void main() => runApp(MyApp());
 
@@ -37,15 +13,20 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   final HubEauFlow api = HubEauFlow();
-  final TextEditingController _controller = TextEditingController();
   List<dynamic> _stations = [];
   String _error = '';
+
+  @override
+  void initState() {
+    super.initState();
+    fetchStations();
+  }
 
   void fetchStations() async {
     setState(() => _error = '');
     try {
-      final stations = await api.getStations(libelleStation: _controller.text);
-      setState(() => _stations = stations);
+      final stations = await api.getStations();
+      setState(() => _stations = stations.take(5).toList()); // Prend 5 stations max
       if (stations.isEmpty) setState(() => _error = 'Aucune station trouvée.');
     } catch (e) {
       setState(() => _error = 'Erreur lors de la récupération des données.');
@@ -55,41 +36,169 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      theme: ThemeData(
+        primaryColor: Colors.white,
+      ),
       home: Scaffold(
-        appBar: AppBar(title: const Text('Recherche de station HubEau')),
+        appBar: AppBar(title: const Text('Qualité des Rivières')),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              TextField(
-                controller: _controller,
-                decoration: const InputDecoration(
-                  labelText: 'Entrez le nom de la station',
-                  border: OutlineInputBorder(),
-                ),
+              if (_error.isNotEmpty)
+                Text(_error, style: const TextStyle(color: Colors.red)),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 50, 
+                      width: 50,
+                      child: Container(
+                        width: 100, 
+                        child: _stations.isNotEmpty
+                          ? ListView(
+                              children: [
+                                SizedBox(height: 10),
+                                Text("Nombre de stations",
+                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                SizedBox(height: 150, child: BarChartWidget(stations: _stations)),
+                              ],
+                            )
+                          : const Center(child: CircularProgressIndicator()),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: fetchStations,
-                child: const Text('Rechercher'),
-              ),
-              const SizedBox(height: 20),
-              if (_error.isNotEmpty) Text(_error, style: const TextStyle(color: Colors.red)),
               Expanded(
-                child: ListView.builder(
-                  itemCount: _stations.length,
-                  itemBuilder: (context, index) {
-                    final station = _stations[index];
-                    return ListTile(
-                      title: Text(station['libelle_station'] ?? 'Nom inconnu'),
-                      subtitle: Text('Code: ${station['code_station'] ?? 'Inconnu'}'),
-                    );
-                  },
-                ),
+              child: _stations.isNotEmpty
+                  ? ListView(
+                      children: [
+                        SizedBox(height: 10),
+                        Text("Evolution d'une mesure",
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        SizedBox(height: 150, width: 50, child: LineChartWidget(stations: _stations)),
+                        SizedBox(height: 10),
+                        Text("Répartition des stations",
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        SizedBox(height: 150, child: PieChartWidget(stations: _stations)),
+                      ],
+                    )
+                  : const Center(child: CircularProgressIndicator()),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// Graphique en Barres avec Nom des Stations
+class BarChartWidget extends StatelessWidget {
+  final List<dynamic> stations;
+  BarChartWidget({required this.stations});
+
+  @override
+  Widget build(BuildContext context) {
+    return BarChart(
+      BarChartData(
+        barGroups: stations.asMap().entries.map((entry) {
+          int index = entry.key;
+          var station = entry.value;
+          return BarChartGroupData(
+            x: index,
+            barRods: [
+              BarChartRodData(
+                toY: station['libelle_station'].length.toDouble(),
+                color: Colors.blueAccent,
+                width: 10,
+              ),
+            ],
+          );
+        }).toList(),
+        titlesData: FlTitlesData(
+          leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                int index = value.toInt();
+                return index < stations.length
+                    ? RotatedBox(
+                        quarterTurns: 1,
+                        child: Text(stations[index]['libelle_station'].substring(0, 3),
+                            style: TextStyle(fontSize: 10)),
+                      )
+                    : Container();
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Graphique en Courbes avec Valeurs Réelles
+class LineChartWidget extends StatelessWidget {
+  final List<dynamic> stations;
+  LineChartWidget({required this.stations});
+
+  @override
+  Widget build(BuildContext context) {
+    return LineChart(
+      LineChartData(
+        lineBarsData: [
+          LineChartBarData(
+            spots: stations.asMap().entries.map((entry) {
+              int index = entry.key;
+              var station = entry.value;
+              return FlSpot(index.toDouble(), station['libelle_station'].length.toDouble());
+            }).toList(),
+            isCurved: true,
+            color: Colors.greenAccent,
+            dotData: FlDotData(show: true),
+            belowBarData: BarAreaData(show: true, color: Colors.green.withOpacity(0.3)),
+          ),
+        ],
+        titlesData: FlTitlesData(
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                int index = value.toInt();
+                return index < stations.length
+                    ? Text(stations[index]['libelle_station'].substring(0, 3), style: TextStyle(fontSize: 10))
+                    : Container();
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Graphique en Camembert avec Répartition des Stations
+class PieChartWidget extends StatelessWidget {
+  final List<dynamic> stations;
+  PieChartWidget({required this.stations});
+
+  @override
+  Widget build(BuildContext context) {
+    return PieChart(
+      PieChartData(
+        sections: stations.asMap().entries.map((entry) {
+          int index = entry.key;
+          var station = entry.value;
+          return PieChartSectionData(
+            value: station['libelle_station'].length.toDouble(),
+            title: station['libelle_station'].substring(0, 3),
+            color: Colors.primaries[index % Colors.primaries.length],
+            radius: 40,
+          );
+        }).toList(),
       ),
     );
   }
