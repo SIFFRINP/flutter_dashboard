@@ -1,6 +1,6 @@
 {
-    "name": "flutter_dashboard",
-    "short_name": "flutter_dashboard",
+    "name": "affichage_map_avec_frontiere_region",
+    "short_name": "affichage_map_avec_frontiere_region",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
