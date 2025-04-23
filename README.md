@@ -44,8 +44,8 @@ Avant d’utiliser ce projet, assure-toi d’avoir Flutter installé sur ta mach
 ### Cloner le dépôt
 
 ```bash
-git clone https://github.com/SIFFRINP/water_quality_dashboard.git
-cd water_quality_dashboard
+git clone https://github.com/SIFFRINP/flutter_dashboard.git
+cd flutter_dashboard
 ```
 
 #### Installer les dépendances 
